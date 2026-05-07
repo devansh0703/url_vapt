@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# URL VAPT Scanner
 
-## Getting Started
+This project provides a URL/domain security scanning workflow with:
 
-First, run the development server:
+- A **Next.js frontend** for selecting scanners and downloading reports.
+- A **FastAPI backend** that runs multiple scans and returns a generated PDF report.
+
+## Project Structure
+
+### `app/` (Next.js frontend)
+
+- `app/page.tsx`  
+  Main UI for:
+  - Entering target URL/domain
+  - Selecting scanners (`whois`, `virustotal`, `security_headers`, `crtsh`, `bgpview`, `ssllabs`, `urlscan`, `publicwww`)
+  - Sending POST request to `http://127.0.0.1:8000/generate-report`
+  - Previewing and downloading the generated PDF
+- `app/layout.tsx`  
+  Root layout and metadata setup for the frontend.
+- `app/globals.css`  
+  Global styles.
+
+### `main.py` (FastAPI backend)
+
+`main.py` exposes the backend API and report generation logic:
+
+- Initializes FastAPI app with CORS for local frontend origins.
+- Defines async scanner wrappers and scanner functions for:
+  - WHOIS
+  - VirusTotal
+  - SSL Labs
+  - crt.sh
+  - Security Headers
+  - urlscan.io
+  - PublicWWW (via Selenium)
+  - BGPView
+- Maps scanners with `SCANNER_MAP`.
+- Exposes endpoint:
+  - `POST /generate-report`
+    - Input: `{ "target": "...", "scanners": ["whois", ...] }`
+    - Output: generated PDF report file response
+- Generates report content using Gemini, converts Markdown → HTML, and renders a styled PDF via ReportLab.
+
+## Run Locally
+
+### Frontend
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Frontend runs on `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Backend
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Run the FastAPI app from repository root (example with uvicorn):
 
-## Learn More
+```bash
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
 
-To learn more about Next.js, take a look at the following resources:
+Backend runs on `http://127.0.0.1:8000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The frontend currently calls the backend at `http://127.0.0.1:8000/generate-report`.
+- `GEMINI_API_KEY` is required in environment variables for report generation.
